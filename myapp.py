@@ -39,6 +39,17 @@ st.markdown(
             padding: 10px;
             border-radius: 10px;
         }
+        .footer {
+        position: fixed;
+        left: 0;
+        bottom: 0;
+        width: 100%;
+        background-color: #f0f2f6; /* Optional: background color for the footer */
+        color: #808080; /* Optional: text color */
+        text-align: center;
+        padding: 10px;
+        font-size: 0.8em;
+    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -305,6 +316,8 @@ def travelplanner():
             file_name=f"itinerary_{destination}_{departure_date}.txt",
             mime="text/plain"
         )
+        # Display the "Made by" text using a div with the custom class
+        st.markdown('<div class="footer">Made with ❤️ by Pramod Lal</div>', unsafe_allow_html=True)
 
 if __name__ == "__main__":
     try:
