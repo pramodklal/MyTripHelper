@@ -1,0 +1,13 @@
+prefix=D:/GenAI_Project_2025/MyTripHelper/envtravelagnt/Library
+exec_prefix=D:/GenAI_Project_2025/MyTripHelper/envtravelagnt/Library
+libdir=D:/GenAI_Project_2025/MyTripHelper/envtravelagnt/Library/lib
+sharedlibdir=D:/GenAI_Project_2025/MyTripHelper/envtravelagnt/Library/lib
+includedir=D:/GenAI_Project_2025/MyTripHelper/envtravelagnt/Library/include
+
+Name: zlib
+Description: zlib compression library
+Version: 1.2.13
+
+Requires:
+Libs: -L${libdir} -L${sharedlibdir} -lz
+Cflags: -I${includedir}

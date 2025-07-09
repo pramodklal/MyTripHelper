@@ -1,0 +1,15 @@
+streamlit
+agno
+serpapi
+google-generativeai 
+python-dotenv
+google-search-results
+langchain-google-genai
+langchain
+beautifulsoup4
+requests
+streamlit-aggrid
+google-generativeai
+pyautogen
+ag2[openai]
+selenium

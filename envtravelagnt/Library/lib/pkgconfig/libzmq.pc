@@ -1,0 +1,12 @@
+prefix=d:/GenAI_Project_2025/MyTripHelper/envtravelagnt/Library
+exec_prefix=d:/GenAI_Project_2025/MyTripHelper/envtravelagnt/Library
+libdir=d:/GenAI_Project_2025/MyTripHelper/envtravelagnt/Library/lib
+includedir=d:/GenAI_Project_2025/MyTripHelper/envtravelagnt/Library/include
+
+Name: libzmq
+Description: 0MQ c++ library
+Version: 4.3.5
+Libs: -L${libdir} -lzmq
+Libs.private: 
+Requires.private: 
+Cflags: -I${includedir} 
