@@ -58,7 +58,8 @@ st.markdown(
 # Title and subtitle
 st.markdown('<h1 class="title">✈️  my Travel Planner (AI Based)</h1>', unsafe_allow_html=True)
 st.markdown('<p class="subtitle">my dream trip with AI having personalized recommendations for flights, hotels, and activities.</p>', unsafe_allow_html=True)
-
+ # Display the "Made by" text using a div with the custom class
+        st.markdown('<div class="footer">Made with ❤️ by Pramod Lal</div>', unsafe_allow_html=True)
 # User Inputs Section
 st.markdown("## 🌐 Where are you going?")
 source = st.text_input("🛫 Enter Departure City OR IATA Code:", "JFK")
@@ -316,8 +317,7 @@ def travelplanner():
             file_name=f"itinerary_{destination}_{departure_date}.txt",
             mime="text/plain"
         )
-        # Display the "Made by" text using a div with the custom class
-        st.markdown('<div class="footer">Made with ❤️ by Pramod Lal</div>', unsafe_allow_html=True)
+       
 
 if __name__ == "__main__":
     try:
