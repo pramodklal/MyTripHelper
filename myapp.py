@@ -39,17 +39,6 @@ st.markdown(
             padding: 10px;
             border-radius: 10px;
         }
-        .footer {
-        position: fixed;
-        left: 0;
-        bottom: 0;
-        width: 100%;
-        background-color: #f0f2f6; /* Optional: background color for the footer */
-        color: #808080; /* Optional: text color */
-        text-align: center;
-        padding: 10px;
-        font-size: 0.8em;
-    }
     </style>
     """,
     unsafe_allow_html=True,
@@ -59,13 +48,17 @@ st.markdown(
 st.markdown('<h1 class="title">✈️  my Travel Planner (AI Based)</h1>', unsafe_allow_html=True)
 st.markdown('<p class="subtitle">my dream trip with AI having personalized recommendations for flights, hotels, and activities.</p>', unsafe_allow_html=True)
 
+
 # User Inputs Section
 st.markdown("## 🌐 Where are you going?")
-source = st.text_input("🛫 Enter Departure City OR IATA Code:", "JFK")
-destination = st.text_input("🛬 Enter Departure City OR IATA Code:", "ORD")
+st.markdown("<b>🛫 Enter Departure City OR IATA Code:</b>", unsafe_allow_html=True)
+source = st.text_input("", "JFK")
+st.markdown("<b>🛬 Enter Destination City OR IATA Code:</b>", unsafe_allow_html=True)
+destination = st.text_input("", "ORD")
 
+st.markdown("<b>🎭 Select Your Travel Theme:</b>", unsafe_allow_html=True)
 travel_theme = st.selectbox(
-    "🎭 Select Your Travel Theme:",
+    "",
     ["👨‍👩‍👧 Family Vacation","🧗‍♂️ Adventure Trip","🧳 Solo Exploration","🚶 Hiking"]
 )
 
@@ -100,11 +93,31 @@ activity_preferences = st.text_area(
     " Sightseeing, Indian Foods, Hiking, Shopping, Cultural Experiences, Beach, Historical sites"
 )
 
-st.markdown("## 📅 Plan Your Trip!!")
-num_days = st.slider("🕒 Trip Duration (days):", 1, 15, 5)
 
-departure_date = st.date_input("Departure Date")
-return_date = st.date_input("Return Date")
+import datetime as dt
+st.markdown("## 📅 Plan Your Trip!!")
+st.markdown("<b>🕒 Trip Duration (days):</b>", unsafe_allow_html=True)
+num_days = st.slider("", 1, 15, 5)
+
+
+# Departure and Return Date side by side
+st.markdown("<b>Departure Date and Return Date:</b>", unsafe_allow_html=True)
+col1, col2 = st.columns(2)
+with col1:
+    departure_date = st.date_input("Departure Date", key="dep_date")
+if isinstance(departure_date, tuple):
+    dep_date = departure_date[0] if departure_date and departure_date[0] else None
+else:
+    dep_date = departure_date if departure_date else None
+if dep_date is not None:
+    try:
+        return_date = dep_date + dt.timedelta(days=num_days)
+    except Exception:
+        return_date = dep_date
+else:
+    return_date = None
+with col2:
+    st.date_input("Return Date (auto-calculated) based on days chosen in Trip Duration ", value=return_date if return_date else dt.date.today(), disabled=True, key="ret_date")
 
 # Sidebar Setup
 st.sidebar.subheader("Personalize my Trip")
@@ -185,8 +198,10 @@ def fetch_flights(source, destination, departure_date, return_date):
             st.error("Failed to fetch flight data from ScrapingBee.")
         return {"best_flights": []}
 # Initialize the Gemini LLM with Google API key
+from pydantic import SecretStr
+
 llm = ChatGoogleGenerativeAI(
-    google_api_key=GOOGLE_API_KEY,
+    api_key=SecretStr(GOOGLE_API_KEY),
     model="models/gemini-2.0-flash"#gemini-1.5-flash"
 )
 
@@ -213,11 +228,31 @@ def extract_cheapest_flights(flight_data):
     sorted_flights = sorted(best_flights, key=parse_price)[:3]
     return sorted_flights
 
+
 # Main function to handle the travel planning process
+import smtplib
+from email.mime.text import MIMEText
+from email.mime.multipart import MIMEMultipart
+
+def send_email(receiver_email, subject, body, sender_email, sender_password):
+    msg = MIMEMultipart()
+    msg['From'] = sender_email
+    msg['To'] = receiver_email
+    msg['Subject'] = subject
+    msg.attach(MIMEText(body, 'plain'))
+    try:
+        with smtplib.SMTP('smtp.gmail.com', 587) as server:
+            server.starttls()
+            server.login(sender_email, sender_password)
+            server.send_message(msg)
+        return True, "Email sent successfully!"
+    except Exception as e:
+        return False, str(e)
 
 def travelplanner():
-
     booking_options = ""
+    sender_email = os.getenv("SENDER_EMAIL")
+    sender_password = os.getenv("SENDER_EMAIL_PASSWORD")
     if st.button("✈️ Generate My Travel Plan"):
         with st.spinner("✈️ Fetching best/cheapest flight options ..."):
             flight_data = fetch_flights(source, destination, departure_date, return_date)
@@ -305,22 +340,52 @@ def travelplanner():
 
         st.subheader("🗺️ Your Personalized Itinerary")
         itinerary_text = getattr(itinerary, 'content', str(itinerary))
+        itinerary_text = getattr(itinerary, 'content', str(itinerary))
         if isinstance(itinerary_text, (list, dict)):
             itinerary_text = json.dumps(itinerary_text, indent=2)
         st.write(itinerary_text if itinerary_text else "No itinerary generated. Please check your inputs and try again.")
-
+        # Store itinerary in session state for email sending
+        st.session_state['itinerary_text'] = itinerary_text
         st.success("✅ Travel plan generated successfully!")
         st.download_button(
-            label="📥 Download Itinerary",
+            label="📥 Download my Itinerary",
             data=itinerary_text if isinstance(itinerary_text, str) else str(itinerary_text),
             file_name=f"itinerary_{destination}_{departure_date}.txt",
             mime="text/plain"
         )
-       # Display the "Made by" text using a div with the custom class
-        st.markdown('<div class="footer">Made with ❤️ by Pramod Lal</div>', unsafe_allow_html=True) 
+
+        # Email input and send button hidden for now
+        # st.markdown('<span style="font-style:italic; text-decoration:underline; font-size:16px;">📧 Enter your email to receive the itinerary:</span>', unsafe_allow_html=True)
+        # email = st.text_input("", "", key="email_after_download")
+        # if st.button("📧 Send my Itinerary"):
+        #     if not email:
+        #         st.error("Please enter your email address.")
+        #     elif not sender_email or not sender_password:
+        #         st.error("Sender email credentials are not set in the environment.")
+        #     else:
+        #         with st.spinner("Sending email..."):
+        #             subject = f"Your Travel Itinerary for {destination}"
+        #             body = itinerary_text if isinstance(itinerary_text, str) else str(itinerary_text)
+        #             success, msg = send_email(email, subject, body, sender_email, sender_password)
+        #             if success:
+        #                 st.success(f"✅ Itinerary sent to your email: {email}")
+        #             else:
+        #                 st.error(f"Failed to send email: {msg}")
+    # Email input and send button only shown after plan generation, handled above
 
 if __name__ == "__main__":
     try:
         travelplanner()
     except Exception as e:
         st.error(f"An error occurred: {e}")
+
+# Footer
+st.markdown(
+    """
+    <hr style='margin-top:40px;margin-bottom:10px;border:1px solid #eee;'>
+    <div style='text-align:center; color:#888; font-size:16px; margin-bottom:20px;'>
+        Made with ❤️ by Pramod Lal for my daughter who loves to travel during her ongoing summer vacation.
+    </div>
+    """,
+    unsafe_allow_html=True
+)
