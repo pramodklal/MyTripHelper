@@ -486,7 +486,7 @@ st.markdown(
     """
     <hr style='margin-top:40px;margin-bottom:10px;border:1px solid #eee;'>
     <div style='text-align:center; color:#888; font-size:16px; margin-bottom:20px;'>
-        Made with ❤️ by Pramod Lal for my daughter who loves to travel during her ongoing summer vacation.
+        Made with ❤️ by Pramod Lal .
     </div>
     """,
     unsafe_allow_html=True
