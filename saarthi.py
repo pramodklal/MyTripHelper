@@ -20,6 +20,9 @@ def fetch_aviationstack_flights(source_iata, dest_iata, dep_date=None):
         resp = requests.get(url, params=params, timeout=15)
         print('URL='+resp.url)
         print('Text='+resp.text)
+        if resp.status_code == 403:
+            # Suppress 403 error message
+            return []
         if resp.status_code != 200:
             st.warning(f"Aviationstack API error: {resp.status_code}")
             return []
@@ -374,19 +377,22 @@ def travelplanner():
         rate = 1
         total_cost_local = int(total_cost_usd)
 
-    # (Moved to after itinerary)
-    # --- Aviationstack Flight Results Section ---
-    st.markdown("### ✈️ Aviationstack Flight Results (Free Tier Demo)")
-    # Use the IATA codes from user input
-    dep_code = source.strip().upper()
-    arr_code = destination.strip().upper()
-    # Optionally use departure date
-    dep_date_str = None
-    if dep_date:
-        dep_date_str = dep_date.strftime('%Y-%m-%d')
-    if st.button("🔍 Show Flights (Aviationstack)"):
-        st.info(f"Fetching flights from {dep_code} to {arr_code} on {dep_date_str if dep_date_str else 'any date'}...")
-        flights = fetch_aviationstack_flights(dep_code, arr_code, dep_date_str)
+    # --- Aviationstack Flight Results Section (Always show as part of plan generation) ---
+    booking_options = ""
+
+    # Email input for download/send
+    user_email = st.text_input("📧 Enter your email to receive the itinerary (optional):", "", key="email_before_download")
+
+    if st.button("✈️ Generate My Travel Plan"):
+        # --- Fetch Aviationstack flights (always as part of plan) ---
+        dep_code = source.strip().upper()
+        arr_code = destination.strip().upper()
+        dep_date_str = None
+        if dep_date:
+            dep_date_str = dep_date.strftime('%Y-%m-%d')
+        with st.spinner(f"Fetching flights from {dep_code} to {arr_code} on {dep_date_str if dep_date_str else 'any date'}..."):
+            flights = fetch_aviationstack_flights(dep_code, arr_code, dep_date_str)
+        st.subheader("✈️ Aviationstack Flight Results (Free Tier Demo)")
         if flights:
             for f in flights[:5]:  # Show up to 5 flights
                 flight_num = f.get('flight', {}).get('iata', 'N/A')
@@ -396,15 +402,6 @@ def travelplanner():
                 st.info(f"Flight: {flight_num} | Airline: {airline}\n\nDeparture: {dep_time} | Arrival: {arr_time}")
         else:
             st.warning("No flights found or API limit reached.")
-    booking_options = ""
-
-    # Email input for download/send
-    user_email = st.text_input("📧 Enter your email to receive the itinerary (optional):", "", key="email_before_download")
-
-    if st.button("✈️ Generate My Travel Plan"):
-        with st.spinner("✈️ Fetching best/cheapest flight options ..."):
-            flight_data = fetch_flights(source, destination, departure_date, return_date)
-            cheapest_flights = extract_cheapest_flights(flight_data)
 
         with st.spinner("🔍 Searching best attractions & activities, hotels, and creating itinerary..."):
             research_prompt = (
@@ -424,60 +421,9 @@ def travelplanner():
                 f"Based on the following data, create a {num_days}-day itinerary for a {travel_theme} trip to {destination}. "
                 f"The traveler enjoys: {activity_preferences}. Budget: {budget}. Flight Class: {flight_class}. Hotel Rating: {hotel_rating}. "
                 f"Research: {getattr(research_results, 'content', str(research_results))}. "
-                f"Flights: {json.dumps(cheapest_flights)}. Hotels & Restaurants: {getattr(hotel_restaurant_results, 'content', str(hotel_restaurant_results))}."
+                f"Hotels & Restaurants: {getattr(hotel_restaurant_results, 'content', str(hotel_restaurant_results))}."
             )
             itinerary = llm.invoke(planning_prompt)
-
-        st.subheader("🛫 Cheapest Flight Options")
-        if cheapest_flights:
-            cols = st.columns(len(cheapest_flights))
-            for idx, flight in enumerate(cheapest_flights):
-                with cols[idx]:
-                    airline_logo = flight.get("airline_logo", "")
-                    airline_name = flight.get("airline", "Unknown Airline")
-                    price = flight.get("price", "Not Available")
-                    total_duration = flight.get("total_duration", "N/A")
-                    flights_info = flight.get("flights", [{}])
-                    departure = flights_info[0].get("departure_airport", {})
-                    arrival = flights_info[-1].get("arrival_airport", {})
-                    airline_name = flights_info[0].get("airline", airline_name)
-                    departure_time = format_datetime(departure.get("time", "N/A"))
-                    arrival_time = format_datetime(arrival.get("time", "N/A"))
-                    booking_link = "#"
-                    st.markdown(
-                        f"""
-                        <div style="
-                            border: 3px solid #ddd; 
-                            border-radius: 10px; 
-                            padding: 15px; 
-                            text-align: center;
-                            box-shadow: 3px 3px 10px rgba(0, 0, 0, 0.1);
-                            background-color: #FFB6C1;
-                            margin-bottom: 20px;
-                        ">
-                            <img src="{airline_logo}" width="100" alt="Flight Logo" />
-                            <h3 style="margin: 10px 0;">{airline_name}</h3>
-                            <p><strong>Departure:</strong> {departure_time}</p>
-                            <p><strong>Arrival:</strong> {arrival_time}</p>
-                            <p><strong>Duration:</strong> {total_duration} min</p>
-                            <h2 style="color: #008000;">💰 {price}</h2>
-                            <a href="{booking_link}" target="_blank" style="
-                                display: inline-block;
-                                padding: 10px 20px;
-                                font-size: 16px;
-                                font-weight: bold;
-                                color: #fff;
-                                background-color: #007bff;
-                                text-decoration: none;
-                                border-radius: 5px;
-                                margin-top: 10px;
-                            ">🔗 Book Now</a>
-                        </div>
-                        """,
-                        unsafe_allow_html=True
-                    )
-        #else:
-            #st.warning("⚠️ No flight data available.")
 
         st.subheader("🏨 Hotels & Restaurants")
         # Always display plain text only
@@ -487,17 +433,16 @@ def travelplanner():
         st.write(hotel_text if hotel_text else "No hotel and restaurant data available.")
 
         st.subheader("🗺️ Your Personalized Itinerary")
-        itinerary_text = getattr(itinerary, 'content', str(itinerary))
+
+        # Prepare itinerary text
         itinerary_text = getattr(itinerary, 'content', str(itinerary))
         if isinstance(itinerary_text, (list, dict)):
             itinerary_text = json.dumps(itinerary_text, indent=2)
-        st.write(itinerary_text if itinerary_text else "No itinerary generated. Please check your inputs and try again.")
-        # Store itinerary in session state for email sending
-
-        # Prepare trip expense summary for download/email
+        # Always append expense at the end
         expense_text = f"\n\n---\n💸 Approximate Trip Expense: {currency_symbol}{total_cost_local:,} {currency_code} ({num_days} days, {budget} budget, {hotel_rating}, {flight_class})\n"
-        itinerary_with_expense = (itinerary_text if isinstance(itinerary_text, str) else str(itinerary_text)) + expense_text
+        itinerary_with_expense = (itinerary_text if itinerary_text else "No itinerary generated. Please check your inputs and try again.") + expense_text
         st.session_state['itinerary_text'] = itinerary_with_expense
+        st.write(itinerary_text if itinerary_text else "No itinerary generated. Please check your inputs and try again.")
 
         # Show approximate trip expense at the bottom (UI)
         st.markdown(f"<div style='background:#e6f7ff;padding:10px;border-radius:10px;margin-bottom:10px;margin-top:18px;'><b>💸 Approximate Trip Expense:</b> <span style='font-size:22px;color:#007bff;font-weight:bold;'>{currency_symbol}{total_cost_local:,} {currency_code}</span> <br><span style='font-size:13px;color:#888;'>({num_days} days, {budget} budget, {hotel_rating}, {flight_class})</span></div>", unsafe_allow_html=True)
@@ -510,6 +455,7 @@ def travelplanner():
             mime="text/plain"
         )
 
+        # Download button does not clear or reset any content.
         # If email is provided and download is clicked, send the itinerary
         if download_clicked and user_email:
             sender_email = os.getenv("SENDER_EMAIL")
