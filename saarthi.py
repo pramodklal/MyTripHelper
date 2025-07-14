@@ -304,7 +304,7 @@ def travelplanner():
         "JFK": "US", "NYC": "US", "ORD": "US", "New York": "US", "Chicago": "US",
         # India
         "DEL": "IN", "BOM": "IN", "BLR": "IN", "MAA": "IN", "HYD": "IN", "CCU": "IN", "GOI": "IN", "PNQ": "IN", "COK": "IN", "AMD": "IN",
-        "Delhi": "IN", "Mumbai": "IN", "Bangalore": "IN", "Chennai": "IN", "Hyderabad": "IN", "Kolkata": "IN", "Goa": "IN", "Pune": "IN", "Kochi": "IN", "Ahmedabad": "IN",
+        "Delhi": "IN", "Mumbai": "IN", "Bangalore": "IN", "Chennai": "IN", "Hyderabad": "IN", "Kolkata": "IN", "Goa": "IN", "Pune": "IN", "Kochi": "IN", "Ahmedabad": "IN", "Kanpur": "IN",
         # UK/Europe/Other
         "LON": "GB", "London": "GB", "PAR": "FR", "Paris": "FR", "BER": "DE", "Berlin": "DE", "TYO": "JP", "Tokyo": "JP", "SYD": "AU", "Sydney": "AU", "TOR": "CA", "Toronto": "CA", "SIN": "SG", "Singapore": "SG", "DXB": "AE", "Dubai": "AE"
     }
@@ -339,15 +339,22 @@ def travelplanner():
     source_name = source_input.title()
     # Normalize for robust India detection
     india_codes = {"IN", "IND", "INDIA"}
-    india_iata = {"DEL", "BOM", "BLR", "MAA", "HYD", "CCU", "GOI", "PNQ", "COK", "AMD"}
-    india_cities = {"Delhi", "Mumbai", "Bangalore", "Chennai", "Hyderabad", "Kolkata", "Goa", "Pune", "Kochi", "Ahmedabad"}
+    india_iata = {
+        "DEL", "BOM", "BLR", "MAA", "HYD", "CCU", "GOI", "PNQ", "COK", "AMD", "LKO", "PAT", "JAI", "ATQ", "SXR", "IXC", "IXB", "TRV", "VNS", "BHO", "NAG", "RJA", "IXM", "IXE", "VTZ", "GAU", "DIB", "IMF", "IXA", "IXJ", "IXR", "IXU", "IDR", "RAJ", "UDR", "JLR", "JDH", "GWL", "STV", "TIR", "TCR", "IXZ", "IXG", "IXI", "IXL", "IXS", "IXT", "IXV", "IXW", "IXY", "JGB", "JRH", "JSA", "KNU", "KQH", "KUU", "LDA", "LGB", "LKO", "LUH", "MEE", "MYQ", "NDC", "NMB", "PAB", "PBD", "PGH", "PUT", "RPR", "RUP", "SAG", "SSE", "TEZ", "TNI", "TNS", "VGA", "VNS", "WGC"
+    }
+    india_cities = {
+        # Major metros
+        "Delhi", "Mumbai", "Bangalore", "Chennai", "Hyderabad", "Kolkata", "Goa", "Pune", "Kochi", "Ahmedabad", "Kanpur", "Lucknow", "Patna", "Jaipur", "Amritsar", "Srinagar", "Chandigarh", "Bagdogra", "Thiruvananthapuram", "Bhopal", "Nagpur", "Rajahmundry", "Madurai", "Mangalore", "Visakhapatnam", "Guwahati", "Dibrugarh", "Imphal", "Agartala", "Jammu", "Ranchi", "Aurangabad", "Indore", "Rajkot", "Udaipur", "Jabalpur", "Jodhpur", "Gwalior", "Surat", "Tuticorin", "Port Blair", "Belgaum", "Lilabari", "Leh", "Silchar", "Tezpur", "Vijayawada", "Mysore", "Nanded", "Nashik", "Porbandar", "Pantnagar", "Puttaparthi", "Raipur", "Rupsi", "Shirdi", "Solapur", "Tiruchirappalli", "Agra", "Madhubani", "Warangal",
+        # Major religious cities
+        "Varanasi", "Haridwar", "Rishikesh", "Ayodhya", "Mathura", "Vrindavan", "Tirupati", "Puri", "Dwarka", "Somnath", "Ujjain", "Nashik", "Shirdi", "Bodh Gaya", "Sarnath", "Amarnath", "Vaishno Devi", "Kedarnath", "Badrinath", "Gangotri", "Yamunotri", "Kanchipuram", "Madurai", "Rameswaram", "Kanyakumari", "Sabarimala", "Palani", "Guruvayur", "Pushkar", "Ajmer", "Pandharpur", "Trimbakeshwar", "Hampi", "Srisailam", "Chidambaram", "Kalahasti", "Tiruvannamalai", "Kanchipuram", "Kottayam", "Kollur", "Murudeshwar", "Gokarna", "Hemkund Sahib", "Patna Sahib", "Nanded Sahib", "Golden Temple", "Hazur Sahib", "Takht Sri Damdama Sahib", "Takht Sri Keshgarh Sahib", "Takht Sri Patna Sahib", "Takht Sri Hazur Sahib"
+    }
     # Try both IATA code and city name for India
     dest_country_code = city_country.get(dest_code, city_country.get(dest_name, "US"))
     source_country_code = city_country.get(source_code, city_country.get(source_name, "US"))
     # For demo, use static conversion rates (in production, use a currency API)
     conversion_rates = {"USD": 1, "INR": 83, "GBP": 0.78, "EUR": 0.92, "JPY": 157, "AUD": 1.5, "CAD": 1.36, "SGD": 1.35, "AED": 3.67}
 
-    # If destination is India by code, IATA, or city name, always show INR
+    # If destination is India by code, IATA, or city name, always show INR, else always show USD
     is_india = (
         dest_country_code == "IN" or
         dest_code in india_iata or
@@ -360,11 +367,12 @@ def travelplanner():
         currency_code = "INR"
         currency_symbol = "₹"
         rate = conversion_rates["INR"]
+        total_cost_local = int(total_cost_usd * rate)
     else:
-        # Use destination country for currency if not India
-        currency_code, currency_symbol = country_currency.get(dest_country_code, ("USD", "$"))
-        rate = conversion_rates.get(currency_code, 1)
-    total_cost_local = int(total_cost_usd * rate)
+        currency_code = "USD"
+        currency_symbol = "$"
+        rate = 1
+        total_cost_local = int(total_cost_usd)
 
     # (Moved to after itinerary)
     # --- Aviationstack Flight Results Section ---
