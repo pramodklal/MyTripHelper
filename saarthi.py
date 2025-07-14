@@ -130,7 +130,7 @@ activity_preferences = st.text_area(
 
 
 import datetime as dt
-st.markdown("## 📅 Plan Your Trip!!")
+st.markdown("## 📅 Plan my Trip!!")
 st.markdown("<b>🕒 Trip Duration (days):</b>", unsafe_allow_html=True)
 num_days = st.slider("", 1, 15, 5)
 
